@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FAQ Chatbot</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="chatbox">
+  <h2>FAQ Chatbot</h2>
+  <div id="chat" class="chat"></div>
+  <input type="text" id="userInput" placeholder="Ask a question..." />
+  <button onclick="handleUserInput()">Ask</button>
+</div>
+
+<script>
+  const faqs = [
+    {
+      question: "What is your return policy?",
+      answer: "Our return policy allows returns within 30 days of purchase with a receipt."
+    },
+    {
+      question: "How long does shipping take?",
+      answer: "Shipping typically takes 3-5 business days."
+    },
+    {
+      question: "Do you offer international shipping?",
+      answer: "Yes, we offer international shipping to most countries."
+    },
+    {
+      question: "How can I contact customer service?",
+      answer: "You can contact our customer service at support@example.com."
+    },
+    {
+      question: "Where is my order?",
+      answer: "You can track your order using the tracking number sent to your email."
+    }
+  ];
+
+  function tokenize(text) {
+    return text.toLowerCase().match(/\w+/g) || [];
+  }
+
+  function buildVector(tokens, allWords) {
+    return allWords.map(word => tokens.filter(t => t === word).length);
+  }
+
+  function cosineSimilarity(vecA, vecB) {
+    let dot = 0, magA = 0, magB = 0;
+    for (let i = 0; i < vecA.length; i++) {
+      dot += vecA[i] * vecB[i];
+      magA += vecA[i] ** 2;
+      magB += vecB[i] ** 2;
+    }
+    return dot / (Math.sqrt(magA) * Math.sqrt(magB) + 1e-10); // avoid divide by 0
+  }
+
+  function findBestAnswer(input) {
+    const inputTokens = tokenize(input);
+    let allWords = new Set(inputTokens);
+    faqs.forEach(faq => tokenize(faq.question).forEach(word => allWords.add(word)));
+    allWords = Array.from(allWords);
+
+    const inputVec = buildVector(inputTokens, allWords);
+
+    let bestScore = 0;
+    let bestAnswer = "Sorry, I couldn't find a relevant answer.";
+
+    faqs.forEach(faq => {
+      const faqTokens = tokenize(faq.question);
+      const faqVec = buildVector(faqTokens, allWords);
+      const score = cosineSimilarity(inputVec, faqVec);
+      if (score > bestScore) {
+        bestScore = score;
+        bestAnswer = faq.answer;
+      }
+    });
+
+    return bestAnswer;
+  }
+
+  function handleUserInput() {
+    const input = document.getElementById("userInput").value;
+    if (!input.trim()) return;
+
+    const chatDiv = document.getElementById("chat");
+    const userMsg = `<p class="user"><strong>You:</strong> ${input}</p>`;
+    chatDiv.innerHTML += userMsg;
+
+    const reply = findBestAnswer(input);
+    const botMsg = `<p class="bot"><strong>Bot:</strong> ${reply}</p>`;
+    chatDiv.innerHTML += botMsg;
+
+    document.getElementById("userInput").value = "";
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+  }
+</script>
+
+</body>
+</html>
